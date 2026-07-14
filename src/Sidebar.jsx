@@ -3,7 +3,6 @@ const navigation = [
   { name: 'Inspectores', icon: '👥' },
   { name: 'Inspecciones', icon: '📄' },
   { name: 'Estadísticas', icon: '📊' },
-  { name: 'Configuración', icon: '⚙️' },
 ];
 
 function Sidebar({ activeItem = 'Dashboard', isOpen, onClose, onNavigate }) {

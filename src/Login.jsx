@@ -5,7 +5,7 @@ function Login({ onSignIn }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const maintenanceContactUrl = import.meta.env.VITE_MAINTENANCE_CONTACT_URL || 'mailto:mantenimiento@inspecortr.com?subject=Soporte%20Portal%20InspecorTR';
+  const maintenanceContactUrl = import.meta.env.VITE_MAINTENANCE_CONTACT_URL || 'mailto:zegarralenny10@gmail.com?subject=Soporte%20Portal%20InspecorTR';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
