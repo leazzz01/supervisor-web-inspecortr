@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Layout from './Layout';
 import Login from './Login';
-import { supabase } from './supabaseClient';
+import { supabase, supabaseConfigError } from './supabaseClient';
 
 const SESSION_KEY = 'inspecortr_rrhh_session';
 
@@ -19,6 +19,22 @@ const getInitialSession = () => {
 
 function App() {
   const [loggedUser, setLoggedUser] = useState(getInitialSession);
+
+  if (supabaseConfigError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-slate-100">
+        <section className="w-full max-w-xl rounded-2xl border border-amber-600/50 bg-slate-900 p-6 shadow-lg">
+          <h1 className="text-xl font-semibold text-amber-300">Configuracion incompleta</h1>
+          <p className="mt-3 text-sm text-slate-300">
+            {supabaseConfigError}
+          </p>
+          <p className="mt-2 text-sm text-slate-400">
+            Define esas variables en Vercel y vuelve a hacer redeploy.
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   const handleSignIn = async ({ email, password }) => {
     const sanitizedEmail = String(email ?? '').trim().toLowerCase();
