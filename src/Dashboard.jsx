@@ -87,6 +87,29 @@ function Dashboard() {
   const [activity, setActivity] = useState(fallbackActivity);
   const [weeklySeries, setWeeklySeries] = useState(fallbackWeekly);
   const [loading, setLoading] = useState(true);
+  const [nowTs, setNowTs] = useState(0);
+
+  const formatRelativeTime = (dateValue) => {
+    if (!dateValue) return 'sin fecha';
+
+    const parsedTime = new Date(dateValue).getTime();
+    if (Number.isNaN(parsedTime)) return 'sin fecha';
+
+    const diffMs = nowTs - parsedTime;
+    if (diffMs < 0) return 'recién';
+
+    const seconds = Math.floor(diffMs / 1000);
+    if (seconds < 60) return 'hace unos segundos';
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `hace ${minutes} min`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `hace ${hours} h`;
+
+    const days = Math.floor(hours / 24);
+    return `hace ${days} d`;
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -239,6 +262,14 @@ function Dashboard() {
       void loadData();
     }, 0);
 
+    const relativeClock = setInterval(() => {
+      setNowTs(Date.now());
+    }, 60 * 1000);
+
+    const relativeClockBootstrap = setTimeout(() => {
+      setNowTs(Date.now());
+    }, 0);
+
     const channel = supabase
       .channel('dashboard-live-updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inspectores' }, () => loadData())
@@ -248,6 +279,8 @@ function Dashboard() {
 
     return () => {
       clearTimeout(bootstrapTimer);
+      clearTimeout(relativeClockBootstrap);
+      clearInterval(relativeClock);
       supabase.removeChannel(channel);
     };
   }, [loadData]);
@@ -287,7 +320,7 @@ function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-slate-700">{item.status}</p>
-                    <p className="text-sm text-slate-500">{item.time}</p>
+                    <p className="text-sm text-slate-500">{item.time} · {formatRelativeTime(item.startedAt)}</p>
                   </div>
                 </div>
               ))

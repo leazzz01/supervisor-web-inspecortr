@@ -33,6 +33,11 @@ function Layout({ userEmail, onSignOut }) {
   const [jornadas, setJornadas] = useState([]);
   const [selectedInspectorId, setSelectedInspectorId] = useState(null);
   const [expandedJornadaIds, setExpandedJornadaIds] = useState([]);
+  const [inspectionSearch, setInspectionSearch] = useState('');
+  const [inspectionStatusFilter, setInspectionStatusFilter] = useState('all');
+  const [inspectionInspectorFilter, setInspectionInspectorFilter] = useState('all');
+  const [inspectionLineFilter, setInspectionLineFilter] = useState('all');
+  const [lastSyncAt, setLastSyncAt] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -117,6 +122,8 @@ function Layout({ userEmail, onSignOut }) {
           })
           .map(({ sortTimestamp, ...inspection }) => inspection)
       );
+
+      setLastSyncAt(new Date().toISOString());
     } catch (error) {
       console.error('Error cargando datos reales:', error);
     } finally {
@@ -434,6 +441,29 @@ function Layout({ userEmail, onSignOut }) {
   };
 
   const renderContent = () => {
+    const normalizedSearch = inspectionSearch.trim().toLowerCase();
+    const filteredInspections = inspections.filter((item) => {
+      const matchesSearch = !normalizedSearch
+        || String(item.interno).toLowerCase().includes(normalizedSearch)
+        || String(item.linea).toLowerCase().includes(normalizedSearch)
+        || String(item.inspector).toLowerCase().includes(normalizedSearch)
+        || String(item.details).toLowerCase().includes(normalizedSearch);
+
+      const matchesStatus = inspectionStatusFilter === 'all'
+        || item.status === inspectionStatusFilter;
+
+      const matchesInspector = inspectionInspectorFilter === 'all'
+        || item.inspector === inspectionInspectorFilter;
+
+      const matchesLine = inspectionLineFilter === 'all'
+        || String(item.linea) === inspectionLineFilter;
+
+      return matchesSearch && matchesStatus && matchesInspector && matchesLine;
+    });
+
+    const inspectorFilterOptions = Array.from(new Set(inspections.map((item) => item.inspector))).sort();
+    const lineFilterOptions = Array.from(new Set(inspections.map((item) => String(item.linea)))).sort();
+
     switch (activeItem) {
       case 'Inspectores':
         return (
@@ -469,11 +499,72 @@ function Layout({ userEmail, onSignOut }) {
               <h2 className="text-xl font-semibold text-slate-900">Inspecciones</h2>
               <p className="mt-2 text-sm text-slate-500">Detalle de inspecciones realizadas con ubicación, horarios e imágenes.</p>
             </div>
+
+            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-5">
+              <input
+                type="text"
+                value={inspectionSearch}
+                onChange={(event) => setInspectionSearch(event.target.value)}
+                placeholder="Buscar por interno, linea, inspector u observacion"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-cyan-400 xl:col-span-2"
+              />
+
+              <select
+                value={inspectionStatusFilter}
+                onChange={(event) => setInspectionStatusFilter(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+              >
+                <option value="all">Todos los estados</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Completada">Completada</option>
+              </select>
+
+              <select
+                value={inspectionInspectorFilter}
+                onChange={(event) => setInspectionInspectorFilter(event.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+              >
+                <option value="all">Todos los inspectores</option>
+                {inspectorFilterOptions.map((inspectorName) => (
+                  <option key={inspectorName} value={inspectorName}>{inspectorName}</option>
+                ))}
+              </select>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={inspectionLineFilter}
+                  onChange={(event) => setInspectionLineFilter(event.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <option value="all">Todas las lineas</option>
+                  {lineFilterOptions.map((lineValue) => (
+                    <option key={lineValue} value={lineValue}>Linea {lineValue}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInspectionSearch('');
+                    setInspectionStatusFilter('all');
+                    setInspectionInspectorFilter('all');
+                    setInspectionLineFilter('all');
+                  }}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                >
+                  Limpiar
+                </button>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-500">
+              Mostrando {filteredInspections.length} de {inspections.length} inspecciones.
+            </p>
+
             {loading ? (
               <p className="text-sm text-slate-500">Cargando inspecciones desde Supabase...</p>
-            ) : inspections.length > 0 ? (
+            ) : filteredInspections.length > 0 ? (
               <div className="space-y-4">
-                {inspections.map((item) => (
+                {filteredInspections.map((item) => (
                   <div key={item.id} className="overflow-hidden rounded-2xl border border-slate-200">
                     <button
                       type="button"
@@ -539,7 +630,7 @@ function Layout({ userEmail, onSignOut }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">No hay inspecciones registradas aún.</p>
+              <p className="text-sm text-slate-500">No hay inspecciones que coincidan con los filtros aplicados.</p>
             )}
           </section>
         );
@@ -569,6 +660,7 @@ function Layout({ userEmail, onSignOut }) {
           title={activeItem}
           userEmail={userEmail}
           onSignOut={onSignOut}
+          lastSyncAt={lastSyncAt}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
         />
         <main className="px-4 py-6 sm:px-6 lg:px-8">{renderContent()}</main>

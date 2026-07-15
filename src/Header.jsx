@@ -1,4 +1,20 @@
-function Header({ title, onToggleSidebar, userEmail, onSignOut }) {
+const formatLastSync = (lastSyncAt) => {
+  if (!lastSyncAt) return 'sin datos';
+
+  const diffMs = Date.now() - new Date(lastSyncAt).getTime();
+  if (Number.isNaN(diffMs) || diffMs < 0) return 'recién';
+
+  const diffSeconds = Math.floor(diffMs / 1000);
+  if (diffSeconds < 60) return 'hace unos segundos';
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `hace ${diffMinutes} min`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  return `hace ${diffHours} h`;
+};
+
+function Header({ title, onToggleSidebar, userEmail, onSignOut, lastSyncAt }) {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -25,7 +41,7 @@ function Header({ title, onToggleSidebar, userEmail, onSignOut }) {
             </div>
           )}
           <div className="hidden rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600 sm:block">
-            Última sincronización: 2 min ago
+            Última sincronización: {formatLastSync(lastSyncAt)}
           </div>
           <button
             type="button"
