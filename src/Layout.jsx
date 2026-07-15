@@ -16,6 +16,14 @@ const buildImageUrl = (imagenuri) => {
   return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${imagenuri}`;
 };
 
+const getInspectionTimestamp = (dateStr, timeStr) => {
+  if (!dateStr) return 0;
+  const safeTime = timeStr && String(timeStr).trim() ? String(timeStr).trim() : '00:00:00';
+  const parsed = new Date(`${dateStr}T${safeTime}`);
+  if (Number.isNaN(parsed.getTime())) return 0;
+  return parsed.getTime();
+};
+
 function Layout({ userEmail, onSignOut }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState('Dashboard');
@@ -75,28 +83,39 @@ function Layout({ userEmail, onSignOut }) {
       }, {});
 
       setInspections(
-        (inspectionsData || []).map((item) => {
-          const jornada = jornadaById[item.jornada_id] || {};
-          const inspector = inspectorsById[jornada.inspector_id] || {};
-          const inspectorName = inspector.nombre ? `${inspector.nombre} ${inspector.apellido ?? ''}`.trim() : 'Inspector';
+        (inspectionsData || [])
+          .map((item) => {
+            const jornada = jornadaById[item.jornada_id] || {};
+            const inspector = inspectorsById[jornada.inspector_id] || {};
+            const inspectorName = inspector.nombre ? `${inspector.nombre} ${inspector.apellido ?? ''}`.trim() : 'Inspector';
+            const dateValue = item.fechainicio || jornada.fecha || null;
+            const timeStartValue = item.horainicio || null;
 
-          return {
-            id: item.id,
-            jornada_id: item.jornada_id,
-            interno: item.interno || '—',
-            linea: item.linea || '—',
-            title: `Interno ${item.interno} · Línea ${item.linea}`,
-            inspector: inspectorName,
-            date: item.fechainicio || jornada.fecha || 'Sin fecha',
-            timeStart: item.horainicio || '—',
-            timeEnd: item.horafin || '—',
-            status: item.horafin ? 'Completada' : 'Pendiente',
-            locationStart: item.direccioninicio || '—',
-            locationEnd: item.direccionfin || '—',
-            image: buildImageUrl(item.imagenuri),
-            details: item.observaciones || 'Sin observaciones',
-          };
-        })
+            return {
+              id: item.id,
+              jornada_id: item.jornada_id,
+              interno: item.interno || '—',
+              linea: item.linea || '—',
+              title: `Interno ${item.interno} · Línea ${item.linea}`,
+              inspector: inspectorName,
+              date: dateValue || 'Sin fecha',
+              timeStart: timeStartValue || '—',
+              timeEnd: item.horafin || '—',
+              status: item.horafin ? 'Completada' : 'Pendiente',
+              locationStart: item.direccioninicio || '—',
+              locationEnd: item.direccionfin || '—',
+              image: buildImageUrl(item.imagenuri),
+              details: item.observaciones || 'Sin observaciones',
+              sortTimestamp: getInspectionTimestamp(dateValue, timeStartValue),
+            };
+          })
+          .sort((a, b) => {
+            if (b.sortTimestamp !== a.sortTimestamp) {
+              return b.sortTimestamp - a.sortTimestamp;
+            }
+            return Number(b.id || 0) - Number(a.id || 0);
+          })
+          .map(({ sortTimestamp, ...inspection }) => inspection)
       );
     } catch (error) {
       console.error('Error cargando datos reales:', error);
