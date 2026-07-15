@@ -24,6 +24,15 @@ const getInspectionTimestamp = (dateStr, timeStr) => {
   return parsed.getTime();
 };
 
+const getInspectionStatus = (inspection) => {
+  const hasStartTime = Boolean(inspection?.horainicio);
+  const hasEndTime = Boolean(inspection?.horafin);
+
+  if (hasEndTime) return 'Completada';
+  if (hasStartTime) return 'Activa';
+  return 'Pendiente';
+};
+
 function Layout({ userEmail, onSignOut }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState('Dashboard');
@@ -95,6 +104,7 @@ function Layout({ userEmail, onSignOut }) {
             const inspectorName = inspector.nombre ? `${inspector.nombre} ${inspector.apellido ?? ''}`.trim() : 'Inspector';
             const dateValue = item.fechainicio || jornada.fecha || null;
             const timeStartValue = item.horainicio || null;
+            const statusValue = getInspectionStatus(item);
 
             return {
               id: item.id,
@@ -106,7 +116,7 @@ function Layout({ userEmail, onSignOut }) {
               date: dateValue || 'Sin fecha',
               timeStart: timeStartValue || '—',
               timeEnd: item.horafin || '—',
-              status: item.horafin ? 'Completada' : 'Pendiente',
+              status: statusValue,
               locationStart: item.direccioninicio || '—',
               locationEnd: item.direccionfin || '—',
               image: buildImageUrl(item.imagenuri),
@@ -515,6 +525,7 @@ function Layout({ userEmail, onSignOut }) {
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
               >
                 <option value="all">Todos los estados</option>
+                <option value="Activa">Activa</option>
                 <option value="Pendiente">Pendiente</option>
                 <option value="Completada">Completada</option>
               </select>
@@ -583,7 +594,9 @@ function Layout({ userEmail, onSignOut }) {
                         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                           item.status === 'Completada' 
                             ? 'bg-emerald-100 text-emerald-700' 
-                            : 'bg-amber-100 text-amber-700'
+                            : item.status === 'Activa'
+                              ? 'bg-cyan-100 text-cyan-700'
+                              : 'bg-amber-100 text-amber-700'
                         }`}>
                           {item.status}
                         </span>

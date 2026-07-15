@@ -32,6 +32,15 @@ const toSortableDate = (dateStr, timeStr) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const getInspectionStatus = (inspection) => {
+  const hasStartTime = Boolean(inspection?.horainicio);
+  const hasEndTime = Boolean(inspection?.horafin);
+
+  if (hasEndTime) return 'Completada';
+  if (hasStartTime) return 'Activa';
+  return 'Pendiente';
+};
+
 const parseTimeToMinutes = (timeStr) => {
   if (!timeStr) return 0;
   const parts = String(timeStr).split(':').map((item) => parseInt(item, 10));
@@ -227,7 +236,7 @@ function Dashboard() {
               startedAt,
               inspector: inspectorName,
               area: item.direccioninicio || 'Sin direccion de inicio',
-              status: item.horafin ? 'Completada' : 'Pendiente',
+              status: getInspectionStatus(item),
               time: item.horainicio || (startedAt ? startedAt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—'),
             };
           })
