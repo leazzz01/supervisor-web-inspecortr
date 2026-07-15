@@ -43,7 +43,6 @@ function Layout({ userEmail, onSignOut }) {
   const [selectedInspectorId, setSelectedInspectorId] = useState(null);
   const [expandedJornadaIds, setExpandedJornadaIds] = useState([]);
   const [inspectionSearch, setInspectionSearch] = useState('');
-  const [inspectionStatusFilter, setInspectionStatusFilter] = useState('all');
   const [inspectionInspectorFilter, setInspectionInspectorFilter] = useState('all');
   const [inspectionLineFilter, setInspectionLineFilter] = useState('all');
   const [lastSyncAt, setLastSyncAt] = useState(null);
@@ -452,15 +451,13 @@ function Layout({ userEmail, onSignOut }) {
 
   const renderContent = () => {
     const normalizedSearch = inspectionSearch.trim().toLowerCase();
-    const filteredInspections = inspections.filter((item) => {
+    const completedInspections = inspections.filter((item) => item.status === 'Completada');
+    const filteredInspections = completedInspections.filter((item) => {
       const matchesSearch = !normalizedSearch
         || String(item.interno).toLowerCase().includes(normalizedSearch)
         || String(item.linea).toLowerCase().includes(normalizedSearch)
         || String(item.inspector).toLowerCase().includes(normalizedSearch)
         || String(item.details).toLowerCase().includes(normalizedSearch);
-
-      const matchesStatus = inspectionStatusFilter === 'all'
-        || item.status === inspectionStatusFilter;
 
       const matchesInspector = inspectionInspectorFilter === 'all'
         || item.inspector === inspectionInspectorFilter;
@@ -468,11 +465,11 @@ function Layout({ userEmail, onSignOut }) {
       const matchesLine = inspectionLineFilter === 'all'
         || String(item.linea) === inspectionLineFilter;
 
-      return matchesSearch && matchesStatus && matchesInspector && matchesLine;
+      return matchesSearch && matchesInspector && matchesLine;
     });
 
-    const inspectorFilterOptions = Array.from(new Set(inspections.map((item) => item.inspector))).sort();
-    const lineFilterOptions = Array.from(new Set(inspections.map((item) => String(item.linea)))).sort();
+    const inspectorFilterOptions = Array.from(new Set(completedInspections.map((item) => item.inspector))).sort();
+    const lineFilterOptions = Array.from(new Set(completedInspections.map((item) => String(item.linea)))).sort();
 
     switch (activeItem) {
       case 'Inspectores':
@@ -510,7 +507,7 @@ function Layout({ userEmail, onSignOut }) {
               <p className="mt-2 text-sm text-slate-500">Detalle de inspecciones realizadas con ubicación, horarios e imágenes.</p>
             </div>
 
-            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-4">
               <input
                 type="text"
                 value={inspectionSearch}
@@ -518,17 +515,6 @@ function Layout({ userEmail, onSignOut }) {
                 placeholder="Buscar por interno, linea, inspector u observacion"
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-cyan-400 xl:col-span-2"
               />
-
-              <select
-                value={inspectionStatusFilter}
-                onChange={(event) => setInspectionStatusFilter(event.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-              >
-                <option value="all">Todos los estados</option>
-                <option value="Activa">Activa</option>
-                <option value="Pendiente">Pendiente</option>
-                <option value="Completada">Completada</option>
-              </select>
 
               <select
                 value={inspectionInspectorFilter}
@@ -556,7 +542,6 @@ function Layout({ userEmail, onSignOut }) {
                   type="button"
                   onClick={() => {
                     setInspectionSearch('');
-                    setInspectionStatusFilter('all');
                     setInspectionInspectorFilter('all');
                     setInspectionLineFilter('all');
                   }}
@@ -568,7 +553,7 @@ function Layout({ userEmail, onSignOut }) {
             </div>
 
             <p className="text-sm text-slate-500">
-              Mostrando {filteredInspections.length} de {inspections.length} inspecciones.
+              Mostrando {filteredInspections.length} de {completedInspections.length} inspecciones completadas.
             </p>
 
             {loading ? (
