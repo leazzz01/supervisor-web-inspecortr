@@ -16,6 +16,30 @@ const buildImageUrl = (imagenuri) => {
   return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${imagenuri}`;
 };
 
+const parseImageUrls = (imagenuri) => {
+  if (!imagenuri) return [];
+
+  if (Array.isArray(imagenuri)) {
+    return imagenuri.map((item) => buildImageUrl(item)).filter(Boolean);
+  }
+
+  const rawValue = String(imagenuri).trim();
+  if (!rawValue) return [];
+
+  if (rawValue.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(rawValue);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => buildImageUrl(item)).filter(Boolean);
+      }
+    } catch (_e) {
+      // Fallback al valor simple
+    }
+  }
+
+  return [buildImageUrl(rawValue)].filter(Boolean);
+};
+
 const getInspectionTimestamp = (dateStr, timeStr) => {
   if (!dateStr) return 0;
   const safeTime = timeStr && String(timeStr).trim() ? String(timeStr).trim() : '00:00:00';
@@ -104,12 +128,15 @@ function Layout({ userEmail, onSignOut }) {
             const dateValue = item.fechainicio || jornada.fecha || null;
             const timeStartValue = item.horainicio || null;
             const statusValue = getInspectionStatus(item);
+            const imageList = parseImageUrls(item.imagenuri);
 
             return {
               id: item.id,
               jornada_id: item.jornada_id,
               interno: item.interno || '—',
               linea: item.linea || '—',
+              choferlegajo: item.choferlegajo || '—',
+              siniestro: item.siniestro || '',
               title: `Interno ${item.interno} · Línea ${item.linea}`,
               inspector: inspectorName,
               date: dateValue || 'Sin fecha',
@@ -118,7 +145,7 @@ function Layout({ userEmail, onSignOut }) {
               status: statusValue,
               locationStart: item.direccioninicio || '—',
               locationEnd: item.direccionfin || '—',
-              image: buildImageUrl(item.imagenuri),
+              images: imageList,
               details: item.observaciones || 'Sin observaciones',
               sortTimestamp: getInspectionTimestamp(dateValue, timeStartValue),
             };
@@ -221,10 +248,11 @@ function Layout({ userEmail, onSignOut }) {
     ];
 
     const inspectionRows = [
-      ['Interno', 'Línea', 'Inspector', 'Fecha', 'Hora inicio', 'Hora fin', 'Estado', 'Dirección inicio', 'Dirección fin', 'Observaciones'],
+      ['Interno', 'Línea', 'Chofer legajo', 'Inspector', 'Fecha', 'Hora inicio', 'Hora fin', 'Estado', 'Dirección inicio', 'Dirección fin', 'Observaciones', 'Siniestro'],
       ...jornadaInspections.map((item) => [
         item.interno || '—',
         item.linea || '—',
+        item.choferlegajo || '—',
         item.inspector || '—',
         item.date || '—',
         item.timeStart || '—',
@@ -233,6 +261,7 @@ function Layout({ userEmail, onSignOut }) {
         item.locationStart || '—',
         item.locationEnd || '—',
         item.details || '—',
+        item.siniestro || '—',
       ]),
     ];
 
@@ -404,6 +433,7 @@ function Layout({ userEmail, onSignOut }) {
                             <tr>
                               <th className="px-3 py-2">Interno</th>
                               <th className="px-3 py-2">Línea</th>
+                              <th className="px-3 py-2">Chofer legajo</th>
                               <th className="px-3 py-2">Inspector</th>
                               <th className="px-3 py-2">Fecha</th>
                               <th className="px-3 py-2">Inicio</th>
@@ -412,6 +442,7 @@ function Layout({ userEmail, onSignOut }) {
                               <th className="px-3 py-2">Dirección inicio</th>
                               <th className="px-3 py-2">Dirección fin</th>
                               <th className="px-3 py-2">Observaciones</th>
+                              <th className="px-3 py-2">Siniestro</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -420,6 +451,7 @@ function Layout({ userEmail, onSignOut }) {
                                 <tr key={item.id} className="border-t border-slate-200">
                                   <td className="px-3 py-2">{item.interno}</td>
                                   <td className="px-3 py-2">{item.linea}</td>
+                                  <td className="px-3 py-2">{item.choferlegajo || '—'}</td>
                                   <td className="px-3 py-2">{item.inspector}</td>
                                   <td className="px-3 py-2">{item.date}</td>
                                   <td className="px-3 py-2">{item.timeStart}</td>
@@ -428,11 +460,12 @@ function Layout({ userEmail, onSignOut }) {
                                   <td className="px-3 py-2">{item.locationStart}</td>
                                   <td className="px-3 py-2">{item.locationEnd}</td>
                                   <td className="px-3 py-2">{item.details}</td>
+                                  <td className="px-3 py-2">{item.siniestro || '—'}</td>
                                 </tr>
                               ))
                             ) : (
                               <tr>
-                                <td colSpan="10" className="px-3 py-3 text-sm text-slate-500">No hay inspecciones para esta jornada.</td>
+                                <td colSpan="12" className="px-3 py-3 text-sm text-slate-500">No hay inspecciones para esta jornada.</td>
                               </tr>
                             )}
                           </tbody>
@@ -456,8 +489,10 @@ function Layout({ userEmail, onSignOut }) {
       const matchesSearch = !normalizedSearch
         || String(item.interno).toLowerCase().includes(normalizedSearch)
         || String(item.linea).toLowerCase().includes(normalizedSearch)
+        || String(item.choferlegajo).toLowerCase().includes(normalizedSearch)
         || String(item.inspector).toLowerCase().includes(normalizedSearch)
-        || String(item.details).toLowerCase().includes(normalizedSearch);
+        || String(item.details).toLowerCase().includes(normalizedSearch)
+        || String(item.siniestro).toLowerCase().includes(normalizedSearch);
 
       const matchesInspector = inspectionInspectorFilter === 'all'
         || item.inspector === inspectionInspectorFilter;
@@ -512,7 +547,7 @@ function Layout({ userEmail, onSignOut }) {
                 type="text"
                 value={inspectionSearch}
                 onChange={(event) => setInspectionSearch(event.target.value)}
-                placeholder="Buscar por interno, linea, inspector u observacion"
+                placeholder="Buscar por interno, linea, chofer, inspector, observacion o siniestro"
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-cyan-400 xl:col-span-2"
               />
 
@@ -608,18 +643,31 @@ function Layout({ userEmail, onSignOut }) {
                             <p className="mt-1 text-sm text-slate-700">{item.locationEnd}</p>
                           </div>
                           <div className="rounded-xl bg-slate-50 p-3">
+                            <p className="text-xs font-semibold text-slate-500 uppercase">Chofer legajo</p>
+                            <p className="mt-1 text-sm text-slate-700">{item.choferlegajo || '—'}</p>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 p-3">
                             <p className="text-xs font-semibold text-slate-500 uppercase">Observaciones</p>
                             <p className="mt-1 text-sm text-slate-700">{item.details}</p>
                           </div>
+                          <div className={`rounded-xl border p-3 ${item.siniestro ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-slate-50'}`}>
+                            <p className={`text-xs font-semibold uppercase ${item.siniestro ? 'text-red-700' : 'text-slate-500'}`}>Siniestro</p>
+                            <p className={`mt-1 text-sm ${item.siniestro ? 'text-red-900' : 'text-slate-700'}`}>{item.siniestro || 'Sin siniestro'}</p>
+                          </div>
                         </div>
-                        {item.image && (
+                        {item.images && item.images.length > 0 && (
                           <div>
-                            <p className="mb-2 text-xs font-semibold text-slate-500 uppercase">Fotografía</p>
-                            <img 
-                              src={item.image} 
-                              alt={item.title} 
-                              className="h-40 w-full rounded-xl object-contain"
-                            />
+                            <p className="mb-2 text-xs font-semibold text-slate-500 uppercase">Fotografías ({item.images.length})</p>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              {item.images.map((imageUrl, imageIndex) => (
+                                <img
+                                  key={`${item.id}_${imageIndex}`}
+                                  src={imageUrl}
+                                  alt={`${item.title} ${imageIndex + 1}`}
+                                  className="h-40 w-full rounded-xl object-contain"
+                                />
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
